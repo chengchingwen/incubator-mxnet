@@ -197,7 +197,24 @@ class Optimizer(object):
         >>> type(adam)
         <class 'mxnet.optimizer.Adam'>
         """
-        if name.lower() in Optimizer.opt_registry:
+        if name.lower().startswith("lookahead"):
+            la_attr = {}
+            for attr in ["alpha", "k", "opt"]:
+                if attr in kwargs:
+                    la_attr[attr] = kwargs[attr]
+                    del kwargs[attr]
+
+            if "." in name:
+                lookahead, inner_opt = name.lower().split(".")
+                assert lookahead == "lookahead"
+                if "opt" in la_attr:
+                    assert la_attr["opt"] == inner_opt
+                else:
+                    la_attr["opt"] = inner_opt
+
+            la_attr["opt"] = Optimizer.opt_registry[la_attr["opt"]](**kwargs)
+            Optimizer.opt_registry["lookahead"](**la_attr)
+        elif name.lower() in Optimizer.opt_registry:
             return Optimizer.opt_registry[name.lower()](**kwargs)
         else:
             raise ValueError('Cannot find optimizer %s' % name)
@@ -2035,7 +2052,8 @@ class Lookahead(Optimizer):
     k : int, optional
         The inner-loop step. Outer loop will update per k inner-loop step.
     """
-    def __init__(self, opt, alpha=0.5, k=6, **kwargs):
+    def __init__(self, opt=None, alpha=0.5, k=6, **kwargs):
+        assert opt is not None
         self.opt = opt
         self.alpha = alpha
         self.k = k
