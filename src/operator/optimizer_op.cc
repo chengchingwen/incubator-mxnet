@@ -710,7 +710,6 @@ only the row slices whose indices appear in grad.indices are updated (for w, m a
 .add_arguments(AdamParam::__FIELDS__());
 
 NNVM_REGISTER_OP(radam_update)
-MXNET_ADD_SPARSE_OP_ALIAS(radam_update)
 .describe(R"code(Update function for RAdam optimizer.)code" ADD_FILELINE)
 .set_num_inputs(4)
 .set_num_outputs(1)
