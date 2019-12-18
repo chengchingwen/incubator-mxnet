@@ -1257,7 +1257,6 @@ struct RAdamParam : public dmlc::Parameter<RAdamParam> {
   float wd;
   float rescale_grad;
   float clip_gradient;
-  bool lazy_update;
   DMLC_DECLARE_PARAMETER(RAdamParam) {
     DMLC_DECLARE_FIELD(lr)
     .describe("Learning rate");
@@ -1286,10 +1285,6 @@ struct RAdamParam : public dmlc::Parameter<RAdamParam> {
     .describe("Clip gradient to the range of [-clip_gradient, clip_gradient] "
               "If clip_gradient <= 0, gradient clipping is turned off. "
               "grad = max(min(grad, clip_gradient), -clip_gradient).");
-    DMLC_DECLARE_FIELD(lazy_update)
-    .set_default(true)
-    .describe("If true, lazy updates are applied if gradient's stype is row_sparse "
-              "and all of w, m and v have the same stype");
   }
 };
 
