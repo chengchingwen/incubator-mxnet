@@ -235,6 +235,7 @@ FP16_FP32_FUNCS = [
     '_zeros_without_dtype',
     'abs',
     'adam_update',
+    'radam_update',
     'all_finite',
     'amp_cast',
     'amp_multicast',

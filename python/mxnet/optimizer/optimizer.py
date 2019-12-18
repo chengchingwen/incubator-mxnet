@@ -32,7 +32,7 @@ from ..ndarray import (sgd_update, sgd_mom_update, adam_update, rmsprop_update, 
                        mp_sgd_update, mp_sgd_mom_update, square, ftrl_update, ftml_update,
                        signsgd_update, signum_update, nag_mom_update, mp_nag_mom_update,
                        multi_sgd_update, multi_sgd_mom_update, multi_mp_sgd_update,
-                       multi_mp_sgd_mom_update, preloaded_multi_sgd_update,
+                       multi_mp_sgd_mom_update, preloaded_multi_sgd_update, radam_update,
                        preloaded_multi_sgd_mom_update, preloaded_multi_mp_sgd_update,
                        preloaded_multi_mp_sgd_mom_update, lamb_update_phase1, lamb_update_phase2,
                        mp_lamb_update_phase1, mp_lamb_update_phase2)
@@ -42,7 +42,7 @@ from ..util import is_np_array
 
 __all__ = [
     'AdaDelta', 'AdaGrad', 'Adam', 'Adamax', 'DCASGD', 'FTML', 'Ftrl', 'LARS', 'LBSGD',
-    'NAG', 'NDabs', 'Nadam', 'Optimizer', 'RMSProp', 'SGD', 'SGLD', 'Signum', 'LAMB',
+    'NAG', 'NDabs', 'Nadam', 'Optimizer', 'RMSProp', 'SGD', 'SGLD', 'Signum', 'LAMB', 'RAdam',
     'Test', 'Updater', 'ccSGD', 'create', 'get_updater', 'register'
 ]
 
@@ -1574,6 +1574,50 @@ class Adam(Optimizer):
         mean, var = state
         adam_update(weight, grad, mean, var, out=weight,
                     lazy_update=self.lazy_update, lr=lr, wd=wd, **kwargs)
+
+@register
+class RAdam(Optimizer):
+    """The RAdam optimizer.
+    Parameters
+    ----------
+    beta1 : float, optional
+        Exponential decay rate for the first moment estimates.
+    beta2 : float, optional
+        Exponential decay rate for the second moment estimates.
+    epsilon : float, optional
+        Small value to avoid division by 0.
+    """
+    def __init__(self, learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8,
+                 lazy_update=True, **kwargs):
+        super(RAdam, self).__init__(learning_rate=learning_rate, **kwargs)
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
+
+    def create_state(self, index, weight):
+        stype = 'default'
+        return (zeros(weight.shape, weight.context, dtype=weight.dtype,
+                      stype=stype),  # mean
+                zeros(weight.shape, weight.context, dtype=weight.dtype,
+                      stype=stype))  # variance
+
+    def update(self, index, weight, grad, state):
+        assert(isinstance(weight, NDArray))
+        assert(isinstance(grad, NDArray))
+        self._update_count(index)
+        lr = self._get_lr(index)
+        wd = self._get_wd(index)
+        t = self._index_update_count[index]
+
+        kwargs = {'beta1': self.beta1, 'beta2': self.beta2, 'epsilon': self.epsilon, 't': t,
+                  'rescale_grad': self.rescale_grad}
+        if self.clip_gradient:
+            kwargs['clip_gradient'] = self.clip_gradient
+
+        mean, var = state
+        radam_update(weight, grad, mean, var, out=weight,
+                     lr=lr, wd=wd, **kwargs)
+
 
 @register
 class AdaGrad(Optimizer):
