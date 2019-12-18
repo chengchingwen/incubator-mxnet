@@ -1352,7 +1352,7 @@ inline void RAdamUpdate(const nnvm::NodeAttrs& attrs,
           out.dptr_, mean.dptr_, var.dptr_, weight.dptr_, grad.dptr_,
           static_cast<DType>(param.clip_gradient), static_cast<DType>(param.rescale_grad),
           static_cast<DType>(param.beta1), static_cast<DType>(param.beta2), beta1_t, beta2_t,
-          static_cast<DType>(param.lr), static_cast<DType>(param.wd),
+          static_cast<DType>(param.lr), static_cast<DType>(param.t), static_cast<DType>(param.wd),
           static_cast<DType>(param.epsilon), req[0]);
   });
 }
