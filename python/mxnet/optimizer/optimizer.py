@@ -2053,6 +2053,7 @@ class Lookahead(Optimizer):
         The inner-loop step. Outer loop will update per k inner-loop step.
     """
     def __init__(self, opt=None, alpha=0.5, k=6, **kwargs):
+        super(Lookahead, self).__init__(**kwargs)
         assert opt is not None
         self.opt = opt
         self.alpha = alpha
