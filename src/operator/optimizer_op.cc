@@ -720,7 +720,6 @@ NNVM_REGISTER_OP(radam_update)
     return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
   })
 .set_attr<nnvm::FInferType>("FInferType", ElemwiseType<4, 1>)
-.set_attr<FInferStorageType>("FInferStorageType", StdOptStorageType<2, RAdamParam>)
 .set_attr<nnvm::FMutateInputs>("FMutateInputs",
   [](const nnvm::NodeAttrs& attrs) {
     return std::vector<uint32_t>{2, 3};
