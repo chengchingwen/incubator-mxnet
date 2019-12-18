@@ -35,6 +35,7 @@ DMLC_REGISTER_PARAMETER(MultiSGDParam);
 DMLC_REGISTER_PARAMETER(MultiSGDMomParam);
 DMLC_REGISTER_PARAMETER(FTMLParam);
 DMLC_REGISTER_PARAMETER(AdamParam);
+DMLC_REGISTER_PARAMETER(RAdamParam);
 DMLC_REGISTER_PARAMETER(NAGParam);
 DMLC_REGISTER_PARAMETER(NAGMomParam);
 DMLC_REGISTER_PARAMETER(RMSPropParam);
@@ -708,6 +709,30 @@ only the row slices whose indices appear in grad.indices are updated (for w, m a
 .add_argument("var", "NDArray-or-Symbol", "Moving variance")
 .add_arguments(AdamParam::__FIELDS__());
 
+NNVM_REGISTER_OP(radam_update)
+MXNET_ADD_SPARSE_OP_ALIAS(radam_update)
+.describe(R"code(Update function for RAdam optimizer.)code" ADD_FILELINE)
+.set_num_inputs(4)
+.set_num_outputs(1)
+.set_attr_parser(ParamParser<RAdamParam>)
+.set_attr<mxnet::FInferShape>("FInferShape", ElemwiseShape<4, 1>)
+.set_attr<FResourceRequest>("FResourceRequest",
+  [](const NodeAttrs& attrs) {
+    return std::vector<ResourceRequest>{ResourceRequest::kTempSpace};
+  })
+.set_attr<nnvm::FInferType>("FInferType", ElemwiseType<4, 1>)
+.set_attr<FInferStorageType>("FInferStorageType", StdOptStorageType<2, RAdamParam>)
+.set_attr<nnvm::FMutateInputs>("FMutateInputs",
+  [](const nnvm::NodeAttrs& attrs) {
+    return std::vector<uint32_t>{2, 3};
+  })
+.set_attr<FCompute>("FCompute<cpu>", RAdamUpdate<cpu>)
+.set_attr<FComputeEx>("FComputeEx<cpu>", RAdamUpdateEx<cpu>)
+.add_argument("weight", "NDArray-or-Symbol", "Weight")
+.add_argument("grad", "NDArray-or-Symbol", "Gradient")
+.add_argument("mean", "NDArray-or-Symbol", "Moving mean")
+.add_argument("var", "NDArray-or-Symbol", "Moving variance")
+.add_arguments(RAdamParam::__FIELDS__());
 
 NNVM_REGISTER_OP(nag_mom_update)
 .describe(R"code(Update function for Nesterov Accelerated Gradient( NAG) optimizer.

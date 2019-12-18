@@ -264,6 +264,10 @@ NNVM_REGISTER_OP(adam_update)
 .set_attr<FCompute>("FCompute<gpu>", AdamUpdate<gpu>)
 .set_attr<FComputeEx>("FComputeEx<gpu>", AdamUpdateEx<gpu>);
 
+NNVM_REGISTER_OP(radam_update)
+.set_attr<FCompute>("FCompute<gpu>", RAdamUpdate<gpu>)
+.set_attr<FComputeEx>("FComputeEx<gpu>", RAdamUpdateEx<gpu>);
+
 NNVM_REGISTER_OP(rmsprop_update)
 .set_attr<FCompute>("FCompute<gpu>", RMSPropUpdate<gpu>);
 

@@ -1248,6 +1248,120 @@ inline void FTMLUpdate(const nnvm::NodeAttrs& attrs,
   });
 }
 
+struct RAdamParam : public dmlc::Parameter<RAdamParam> {
+  float lr;
+  float beta1;
+  float beta2;
+  int t;
+  float epsilon;
+  float wd;
+  float rescale_grad;
+  float clip_gradient;
+  bool lazy_update;
+  DMLC_DECLARE_PARAMETER(AdamParam) {
+    DMLC_DECLARE_FIELD(lr)
+    .describe("Learning rate");
+    DMLC_DECLARE_FIELD(beta1)
+    .set_default(0.9f)
+    .describe("The decay rate for the 1st moment estimates.");
+    DMLC_DECLARE_FIELD(beta2)
+    .set_default(0.999f)
+    .describe("The decay rate for the 2nd moment estimates.");
+    DMLC_DECLARE_FIELD(t)
+    .set_default(1)
+    .describe("The update counter.");
+    DMLC_DECLARE_FIELD(epsilon)
+    .set_default(1e-8f)
+    .describe("A small constant for numerical stability.");
+    DMLC_DECLARE_FIELD(wd)
+    .set_default(0.0f)
+    .describe("Weight decay augments the objective function with a "
+              "regularization term that penalizes large weights. "
+              "The penalty scales with the square of the magnitude of each weight.");
+    DMLC_DECLARE_FIELD(rescale_grad)
+    .set_default(1.0f)
+    .describe("Rescale gradient to grad = rescale_grad*grad.");
+    DMLC_DECLARE_FIELD(clip_gradient)
+    .set_default(-1.0f)
+    .describe("Clip gradient to the range of [-clip_gradient, clip_gradient] "
+              "If clip_gradient <= 0, gradient clipping is turned off. "
+              "grad = max(min(grad, clip_gradient), -clip_gradient).");
+    DMLC_DECLARE_FIELD(lazy_update)
+    .set_default(true)
+    .describe("If true, lazy updates are applied if gradient's stype is row_sparse "
+              "and all of w, m and v have the same stype");
+  }
+};
+
+struct RAdamUpdateKernel {
+  template<typename DType>
+  MSHADOW_XINLINE static void Map(int i, DType* out_data,
+                                  DType* mean_data, DType* var_data, const DType* weight_data, const DType* grad_data,
+                                  const DType clip_gradient, const DType rescale_grad,
+                                  const DType beta1, const DType beta2,
+                                  const DType beta1_t, const DType beta2_t,
+                                  const DType lr, const int t, const DType wd,
+                                  const DType epsilon, const OpReqType req) {
+    using namespace mshadow_op;
+
+    DType grad_rescaled = grad_data[i] * rescale_grad + weight_data[i] * wd;
+    if (clip_gradient >= 0.f) {
+      grad_rescaled = clip::Map(grad_rescaled, clip_gradient);
+    }
+
+    mean_data[i] = beta1 * mean_data[i] + (1.f - beta1) * grad_rescaled;
+    var_data[i] = beta2 * var_data[i] +
+      (1.f - beta2) * grad_rescaled * grad_rescaled;
+
+    DType rho_inf = 2.f / (1.f - beta2) - 1.f;
+    Dtype rho = rho_inf - 2.f * t * beta2_t / (1.f - beta2_t);
+
+    DType mean_hat = mean_data[i] / (1.f - beta1_t);
+
+    if (rho > 4.f){
+      DType r = std::sqrt(
+                          (rho - 4.f) * (rho - 2.f) * rho_inf /
+                          ((rho_inf - 4.f) * (rho_inf - 2.f) * rho)
+                          );
+
+      DType var_hat = var_data[i] / (1.f - beta2_t);
+
+      KERNEL_ASSIGN(out_data[i], req, weight_data[i] - lr * r * mean_hat / (square_root::Map(var_hat) + epsilon));
+    }
+    else{
+      KERNEL_ASSIGN(out_data[i], req, weight_data[i] - lr * mean_hat);
+    }
+  }
+};
+
+template<typename xpu>
+inline void RAdamUpdate(const nnvm::NodeAttrs& attrs,
+                       const OpContext &ctx,
+                       const std::vector<TBlob> &inputs,
+                       const std::vector<OpReqType> &req,
+                       const std::vector<TBlob> &outputs) {
+  using namespace mxnet_op;
+  const RAdamParam& param = nnvm::get<RAdamParam>(attrs.parsed);
+  Stream<xpu>* s = ctx.get_stream<xpu>();
+
+  MSHADOW_REAL_TYPE_SWITCH(inputs[0].type_flag_, DType, {
+    DType beta1_t = std::pow(param.beta1, param.t);
+    DType beta2_t = std::pow(param.beta2, param.t);
+    Tensor<xpu, 2, DType> weight = inputs[0].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> grad = inputs[1].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> mean = inputs[2].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> var = inputs[3].FlatTo2D<xpu, DType>(s);
+    Tensor<xpu, 2, DType> out = outputs[0].FlatTo2D<xpu, DType>(s);
+
+    Kernel<RAdamUpdateKernel, xpu>::Launch(s, weight.shape_.Size(),
+          out.dptr_, mean.dptr_, var.dptr_, weight.dptr_, grad.dptr_,
+          static_cast<DType>(param.clip_gradient), static_cast<DType>(param.rescale_grad),
+          static_cast<DType>(param.beta1), static_cast<DType>(param.beta2), beta1_t, beta2_t,
+          static_cast<DType>(param.lr), static_cast<DType>(param.wd),
+          static_cast<DType>(param.epsilon), req[0]);
+  });
+}
+
 struct AdamParam : public dmlc::Parameter<AdamParam> {
   float lr;
   float beta1;
