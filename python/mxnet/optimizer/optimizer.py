@@ -213,7 +213,7 @@ class Optimizer(object):
                     la_attr["opt"] = inner_opt
 
             la_attr["opt"] = Optimizer.opt_registry[la_attr["opt"]](**kwargs)
-            Optimizer.opt_registry["lookahead"](**la_attr)
+            return Optimizer.opt_registry["lookahead"](**la_attr)
         elif name.lower() in Optimizer.opt_registry:
             return Optimizer.opt_registry[name.lower()](**kwargs)
         else:
