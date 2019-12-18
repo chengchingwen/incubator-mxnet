@@ -43,7 +43,7 @@ from ..util import is_np_array
 __all__ = [
     'AdaDelta', 'AdaGrad', 'Adam', 'Adamax', 'DCASGD', 'FTML', 'Ftrl', 'LARS', 'LBSGD',
     'NAG', 'NDabs', 'Nadam', 'Optimizer', 'RMSProp', 'SGD', 'SGLD', 'Signum', 'LAMB', 'RAdam',
-    'Test', 'Updater', 'ccSGD', 'create', 'get_updater', 'register'
+    'Lookahead', 'Test', 'Updater', 'ccSGD', 'create', 'get_updater', 'register'
 ]
 
 def _flatten_list(nested_list):
@@ -1619,6 +1619,8 @@ class RAdam(Optimizer):
                      lr=lr, wd=wd, **kwargs)
 
 
+
+
 @register
 class AdaGrad(Optimizer):
     """AdaGrad optimizer.
@@ -2018,6 +2020,37 @@ class Nadam(Optimizer):
 
         # update weight
         weight[:] -= lr * m_t_bar / (sqrt(v_t_prime) + self.epsilon)
+
+
+@register
+class Lookahead(Optimizer):
+    """The Lookahead Optimizer
+
+    Parameters
+    ----------
+    opt : Optimizer
+        The Inner Optimizer
+    alpha : float, optional
+        The slow weight step size.
+    k : int, optional
+        The inner-loop step. Outer loop will update per k inner-loop step.
+    """
+    def __init__(self, opt, alpha=0.5, k=6, **kwargs):
+        self.opt = opt
+        self.alpha = alpha
+        self.k = k
+        self.inner_step = get_updater(self.opt)
+
+    def create_state(self, index, weight):
+        return (weight.copy(),)
+
+    def update(self, index, weight, grad, state):
+        self.inner_step(index, grad, weight)
+        t = self.opt._index_update_count[index]
+
+        if t % self.k == 0:
+            slow_weight = state[0]
+            slow_weight[:] = self.alpha * weight + (1 - self.alpha) * slow_weight
 
 @register
 class Test(Optimizer):
