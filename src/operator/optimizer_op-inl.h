@@ -1258,7 +1258,7 @@ struct RAdamParam : public dmlc::Parameter<RAdamParam> {
   float rescale_grad;
   float clip_gradient;
   bool lazy_update;
-  DMLC_DECLARE_PARAMETER(AdamParam) {
+  DMLC_DECLARE_PARAMETER(RAdamParam) {
     DMLC_DECLARE_FIELD(lr)
     .describe("Learning rate");
     DMLC_DECLARE_FIELD(beta1)
@@ -1314,7 +1314,7 @@ struct RAdamUpdateKernel {
       (1.f - beta2) * grad_rescaled * grad_rescaled;
 
     DType rho_inf = 2.f / (1.f - beta2) - 1.f;
-    Dtype rho = rho_inf - 2.f * t * beta2_t / (1.f - beta2_t);
+    DType rho = rho_inf - 2.f * t * beta2_t / (1.f - beta2_t);
 
     DType mean_hat = mean_data[i] / (1.f - beta1_t);
 

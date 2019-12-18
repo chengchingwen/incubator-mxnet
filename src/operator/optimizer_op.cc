@@ -727,7 +727,6 @@ MXNET_ADD_SPARSE_OP_ALIAS(radam_update)
     return std::vector<uint32_t>{2, 3};
   })
 .set_attr<FCompute>("FCompute<cpu>", RAdamUpdate<cpu>)
-.set_attr<FComputeEx>("FComputeEx<cpu>", RAdamUpdateEx<cpu>)
 .add_argument("weight", "NDArray-or-Symbol", "Weight")
 .add_argument("grad", "NDArray-or-Symbol", "Gradient")
 .add_argument("mean", "NDArray-or-Symbol", "Moving mean")
