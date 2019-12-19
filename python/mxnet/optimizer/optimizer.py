@@ -2070,7 +2070,8 @@ class Lookahead(Optimizer):
         if t % self.k == 0:
             slow_weight = state[0]
             slow_weight[:] = self.alpha * weight + (1 - self.alpha) * slow_weight
-
+            weight[:] = slow_weight
+            
 @register
 class Test(Optimizer):
     """The Test optimizer"""
